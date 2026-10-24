@@ -3,7 +3,7 @@
 /**
  * Plugin Name:       Taxmod DHL
  * Description:       Connects the owner's DHL developer app (Shipment Tracking – Unified API) and tells other Taxmod modules where a parcel stands.
- * Version:           0.0.1
+ * Version:           0.0.2
  * Requires at least: 6.9
  * Requires PHP:      8.2
  * Author:            Stefan Fambach (SteFam)

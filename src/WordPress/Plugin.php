@@ -6,6 +6,7 @@ use TaxApiDhl\Core\Api\ConnectionTest;
 use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\Environment;
 use TaxApiDhl\Core\Api\TrackingClient;
+use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
 
 /**
  * The boundary: the «DHL» tab of the modeller's Configuration page (D-945, D-981), the connection test, the probe
@@ -13,13 +14,15 @@ use TaxApiDhl\Core\Api\TrackingClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.1';
+    public const VERSION    = '0.0.2';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
+    public const PORTOKASSE = 'taxapidhl_portokasse';
 
     public const LAST_CHECK = 'taxmod_dhl_last_check';
     public const LAST_PROBE = 'taxmod_dhl_last_probe';
+    public const LAST_PORTOKASSE = 'taxmod_dhl_last_portokasse';
 
     /** Messages for the next page view of one user, after a redirect. */
     private const NOTICES = 'taxapidhl_notices_';
@@ -30,7 +33,8 @@ final class Plugin
 
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
         add_action('admin_post_' . self::PROBE, $plugin->handleProbe(...));
-        add_action('admin_footer', SettingsScreen::probeForm(...));
+        add_action('admin_post_' . self::PORTOKASSE, $plugin->handlePortokasse(...));
+        add_action('admin_footer', SettingsScreen::probeForms(...));
         add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = ''): ?array => (new Tracker())->filter($previous, $number), 10, 2);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
     }
@@ -46,7 +50,10 @@ final class Plugin
             'version'     => self::VERSION,
             'credentials' => static fn (): string => (new SettingsScreen(new StoredAccess()))->credentials(),
             'test'        => static fn (): string => self::testConnection(),
-            'forget'      => static fn () => (new StoredAccess())->forget(),
+            'forget'      => static function (): void {
+                (new StoredAccess())->forget();
+                (new StoredPortokasse())->forget();
+            },
             'render'      => fn (): string => (new SettingsScreen(new StoredAccess()))->fields($this->takeNotices()),
             'save'        => static fn (array $post): bool => self::saveAccess($post),
             'guide'       => static fn (): string => SettingsScreen::guide(),
@@ -81,6 +88,9 @@ final class Plugin
 
         $field = static fn (string $name): string => is_string($post[$name] ?? null) ? trim(sanitize_text_field($post[$name])) : '';
         $access->save(Environment::tryFrom($field('taxapidhl_environment')) ?? Environment::Sandbox, $field('taxapidhl_api_key'));
+        // The Portokasse password may hold any character, so it is taken as typed, only trimmed of line breaks.
+        $password = is_string($post['taxapidhl_im_password'] ?? null) ? trim($post['taxapidhl_im_password'], "\r\n") : '';
+        (new StoredPortokasse())->save($field('taxapidhl_im_client_id'), $field('taxapidhl_im_client_secret'), sanitize_email($field('taxapidhl_im_username')) ?: $field('taxapidhl_im_username'), $password);
 
         return $access->apiKey() !== null;
     }
@@ -154,6 +164,41 @@ final class Plugin
             }
         } catch (DhlApiException $failure) {
             $this->notice(false, __('Tracking failed:', 'taxapidhl') . ' ' . $failure->getMessage());
+        }
+
+        $this->back();
+    }
+
+    /** Probe of the Internetmarke step 1: token, balance and print formats. Buys nothing. */
+    public function handlePortokasse(): void
+    {
+        if (! current_user_can(self::CAPABILITY)) {
+            wp_die(esc_html__('You may not use the DHL connection.', 'taxapidhl'), 403);
+        }
+
+        check_admin_referer(self::PORTOKASSE);
+        $access = (new StoredPortokasse())->access();
+
+        if ($access === null) {
+            $this->notice(false, __('The Internetmarke access is incomplete — client secret, Portokasse user and password are needed.', 'taxapidhl'));
+            $this->back();
+        }
+
+        try {
+            $client = new InternetmarkeClient(new WpHttpTransport());
+            $session = $client->session($access);
+            update_option(self::LAST_PORTOKASSE, [
+                'at'      => current_time('mysql'),
+                'user'    => $session->user,
+                'balance' => $session->balanceCents,
+                'notice'  => $session->notice,
+                'formats' => array_map(static fn ($format): array => [
+                    'id' => $format->id, 'name' => $format->name, 'type' => $format->pageType, 'width' => $format->widthMm, 'height' => $format->heightMm, 'address' => $format->addressPossible,
+                ], $client->pageFormats($session)),
+            ], false);
+            $this->notice(true, __('Portokasse answered.', 'taxapidhl'));
+        } catch (DhlApiException $failure) {
+            $this->notice(false, __('Portokasse check failed:', 'taxapidhl') . ' ' . $failure->getMessage());
         }
 
         $this->back();

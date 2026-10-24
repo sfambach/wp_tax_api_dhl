@@ -17,6 +17,7 @@ final class WpHttpTransport implements HttpTransport
         $answer = wp_remote_request($request->url, [
             'method'  => $request->method,
             'headers' => $request->headers,
+            'body'    => $request->body === '' ? null : $request->body,
             'timeout' => 20,
         ]);
 

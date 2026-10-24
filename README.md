@@ -3,9 +3,12 @@
 DHL tracking for the [Taxonomy Modeller](https://github.com/sfambach/wp-taxonomy-modeler) (WordPress plugin), over
 DHL's [Shipment Tracking – Unified API](https://developer.dhl.com/api-reference/shipment-tracking).
 
-**Status 0.0.1: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
+**Status 0.0.2: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
 server switch sandbox / production, «Test connection», a read-only probe that tracks one number and lists its events,
-and the filter `taxmod_dhl_tracking` for other modules. Not yet tested against DHL. Nothing is written to the model.**
+and the filter `taxmod_dhl_tracking` for other modules. New in 0.0.2: Internetmarke access (app secret + Portokasse
+login, sealed) and a probe «Check Portokasse» that shows the balance and the print formats, label printers first —
+step 1 towards printing letter postage on the 62 mm label printer. It buys nothing. Not yet tested against DHL or
+the Post. Nothing is written to the model.**
 
 ## Idea in short
 
@@ -29,6 +32,14 @@ and the filter `taxmod_dhl_tracking` for other modules. Not yet tested against D
    ```
 
 3. Request production access for the app, switch the server to «Production», test again, then «Track» one real number.
+
+## Internetmarke (letter postage, optional)
+
+The Internetmarke API sells Deutsche Post letter postage from a Portokasse and returns each stamp as PNG or PDF, so a
+label can be laid out pixel-exact for a label printer. Access = client id and secret of the DHL app (with the API
+«Post DE Internetmarke») plus the Portokasse login; production needs a one-time approval per Portokasse. For tests,
+register a second Portokasse and ask it-csp@deutschepost.de to turn it into a developer Portokasse (stamps print
+«Muster», no charge).
 
 ## For other modules
 
