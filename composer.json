@@ -1,0 +1,30 @@
+{
+    "name": "sfambach/wp-tax-api-dhl",
+    "description": "Taxmod DHL — tracks DHL shipments for the Taxonomy Modeller over the DHL Shipment Tracking – Unified API.",
+    "type": "wordpress-plugin",
+    "license": "proprietary",
+    "require": {
+        "php": ">=8.2"
+    },
+    "autoload": {
+        "psr-4": {
+            "TaxApiDhl\\Core\\": "src/Core/",
+            "TaxApiDhl\\WordPress\\": "src/WordPress/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "TaxApiDhl\\Tests\\": "tests/"
+        }
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^10"
+    },
+    "config": {
+        "optimize-autoloader": true,
+        "sort-packages": true
+    },
+    "scripts": {
+        "test": "phpunit"
+    }
+}
