@@ -61,6 +61,11 @@ OpenAPI file 1.5.8.
 Copyright (C) 2026 Stefan Fambach (SteFam), https://www.fambach.net — [PolyForm Noncommercial 1.0.0](LICENSE.md).
 Commercial use needs the owner's prior consent.
 
+## Authors
+
+- **Stefan Fambach** (SteFam) – idea and concept, review and testing – https://www.fambach.net
+- **Claude** (Anthropic AI) – implementation, via Claude Code
+
 ## AI disclosure
 
-This repository is created and maintained with the help of AI (Claude by Anthropic). All changes are reviewed by the owner.
+This project is built with AI assistance. Stefan Fambach had the idea, wrote the concept and reviews and tests every change; the implementation (code and documentation) is written largely by Claude (Anthropic) via Claude Code.
