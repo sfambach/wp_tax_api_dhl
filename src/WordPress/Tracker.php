@@ -4,18 +4,21 @@ namespace TaxApiDhl\WordPress;
 
 use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\TrackingClient;
+use TaxApiDhl\Core\Tracking\Event;
 use TaxApiDhl\Core\Tracking\Shipment;
 use TaxApiDhl\Core\Tracking\Stage;
 
 /**
  * Answers the filter `taxmod_dhl_tracking` for other modules: one tracking number in, its stage out. Each number is
- * asked at most once per CACHE_SECONDS, and all calls of a day stay under DAILY_BUDGET, below the app's quota of 250.
+ * asked at most once per interval (setting, DEFAULT_HOURS), and all calls of a day stay under DAILY_BUDGET, below the app's quota of 250.
  */
 final class Tracker
 {
     public const FILTER        = 'taxmod_dhl_tracking';
     public const DAILY_BUDGET  = 200;
-    public const CACHE_SECONDS = 2 * HOUR_IN_SECONDS;
+    public const DEFAULT_HOURS = 4;
+    public const MAX_HOURS     = 24;
+    public const INTERVAL      = 'taxmod_dhl_interval_hours';
 
     private const CACHE  = 'taxdhl_track_';
     private const BUDGET = 'taxmod_dhl_calls';
@@ -26,7 +29,7 @@ final class Tracker
 
     /**
      * @param mixed $previous what an earlier callback returned; `mixed` because filters pass anything along
-     * @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string}|null
+     * @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string, events: list<array{at: string, status_code: string, status: string, description: string, place: string}>}|null
      *         null when no key is set, the budget is used up or DHL failed; a number DHL has not scanned yet comes back
      *         as `known` false, stage `announced` — like eBay's «tracking number entered»
      */
@@ -55,7 +58,7 @@ final class Tracker
         }
 
         $result = $shipment === null ? self::notScannedYet($number) : self::summary($shipment);
-        set_transient(self::CACHE . md5($number), ['result' => $result], self::CACHE_SECONDS);
+        set_transient(self::CACHE . md5($number), ['result' => $result], self::intervalHours() * HOUR_IN_SECONDS);
 
         return $result;
     }
@@ -76,6 +79,22 @@ final class Tracker
         return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
     }
 
+    /** How many hours a tracking number's answer is kept before DHL is asked again; 1 to MAX_HOURS. */
+    public static function intervalHours(): int
+    {
+        return self::clampHours((int) get_option(self::INTERVAL, self::DEFAULT_HOURS));
+    }
+
+    public static function saveIntervalHours(int $hours): void
+    {
+        update_option(self::INTERVAL, self::clampHours($hours), false);
+    }
+
+    private static function clampHours(int $hours): int
+    {
+        return $hours < 1 ? self::DEFAULT_HOURS : min($hours, self::MAX_HOURS);
+    }
+
     /** @return array{day: string, calls: int} */
     public static function callsToday(): array
     {
@@ -85,7 +104,7 @@ final class Tracker
         return is_array($stored) && ($stored['day'] ?? '') === $today ? ['day' => $today, 'calls' => (int) ($stored['calls'] ?? 0)] : ['day' => $today, 'calls' => 0];
     }
 
-    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string} */
+    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string, events: list<array{at: string, status_code: string, status: string, description: string, place: string}>} */
     public static function summary(Shipment $shipment): array
     {
         return [
@@ -97,10 +116,17 @@ final class Tracker
             'at'              => $shipment->timestamp,
             'shipped_at'      => $shipment->firstMovement(),
             'estimated'       => $shipment->estimatedDelivery,
+            'events'          => array_map(static fn (Event $event): array => [
+                'at'          => $event->timestamp,
+                'status_code' => $event->statusCode,
+                'status'      => $event->status,
+                'description' => $event->description,
+                'place'       => $event->locality,
+            ], $shipment->events),
         ];
     }
 
-    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string} */
+    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string, events: list<array{at: string, status_code: string, status: string, description: string, place: string}>} */
     public static function notScannedYet(string $number): array
     {
         return [
@@ -112,6 +138,7 @@ final class Tracker
             'at'              => '',
             'shipped_at'      => '',
             'estimated'       => '',
+            'events'          => [],
         ];
     }
 

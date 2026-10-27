@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.7';
+    public const VERSION    = '0.0.8';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -80,6 +80,10 @@ final class Plugin
      */
     private static function saveAccess(array $post): bool
     {
+        if (is_scalar($post['taxapidhl_interval_hours'] ?? null)) {
+            Tracker::saveIntervalHours(absint($post['taxapidhl_interval_hours']));
+        }
+
         $access = new StoredAccess();
 
         if ($access->fromConstants() || ! StoredAccess::vaultAvailable()) {

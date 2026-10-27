@@ -82,6 +82,9 @@ final class SettingsScreen
             $calls['calls'],
             Tracker::DAILY_BUDGET
         )) . '</p>';
+        $html .= '<p><label for="taxapidhl-interval">' . esc_html__('Ask DHL again about a tracking number after', 'taxapidhl') . '</label> '
+            . '<input type="number" id="taxapidhl-interval" name="taxapidhl_interval_hours" min="1" max="' . esc_attr((string) Tracker::MAX_HOURS) . '" style="width:5em" value="' . esc_attr((string) Tracker::intervalHours()) . '"> '
+            . esc_html__('hours', 'taxapidhl') . '</p>';
 
         return $html . ($this->access->apiKey() === null ? '' : $this->probe()) . $this->portokasse();
     }
@@ -217,7 +220,7 @@ final class SettingsScreen
             __('Choose «Sandbox», enter the key, save and click «Test connection». If the test says the web server cannot reach DHL, your host blocks outgoing calls — applying for production is then pointless.', 'taxapidhl'),
             __('When the test works, request production access for the app in the portal. Once granted, switch the server to «Production» and test again.', 'taxapidhl'),
             __('Optional, for letter postage: add «Post DE Internetmarke» to the app, enter its client secret and your Portokasse login below the key, save and click «Check Portokasse». For tests ask it-csp@deutschepost.de to turn a second Portokasse into a developer Portokasse.', 'taxapidhl'),
-            __('Use «Track» to look at one real shipment. Other modules (eBay shipping) ask this module per tracking number; at most 200 calls a day, each number at most every two hours.', 'taxapidhl'),
+            __('Use «Track» to look at one real shipment. Other modules (eBay shipping) ask this module per tracking number; at most 200 calls a day, each number at most once per the interval set below (default four hours).', 'taxapidhl'),
         ];
 
         return '<ol>' . implode('', array_map(static fn (string $step): string => '<li>' . esc_html($step) . '</li>', $steps)) . '</ol>';
