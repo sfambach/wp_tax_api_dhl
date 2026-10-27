@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.9';
+    public const VERSION    = '0.0.10';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';

@@ -61,7 +61,7 @@ final class TrackingClient
         $body = $response->json();
         $text = match ($response->status) {
             401, 403 => 'DHL refused the API key',
-            429      => 'Daily quota of the DHL app used up',
+            429      => 'DHL refused: too many calls (one every 5 seconds, 250 a day)',
             default  => 'DHL answered HTTP ' . $response->status,
         };
 

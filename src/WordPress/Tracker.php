@@ -22,8 +22,12 @@ final class Tracker
     public const REFRESH      = 'refresh';
 
     private const LAST    = 'taxmod_dhl_last_answers';
-    private const KEPT    = 500;
-    private const BUDGET  = 'taxmod_dhl_calls';
+    private const KEPT      = 500;
+    private const BUDGET    = 'taxmod_dhl_calls';
+    private const OLD_CACHE = 'taxdhl_track_';
+    private const LAST_CALL = 'taxmod_dhl_last_call';
+    // DHL allows one call every 5 seconds per app; faster calls are refused (developer.dhl.com/tracking, 2026-10-27).
+    private const GAP_SECONDS = 5;
 
     public function __construct(private readonly StoredAccess $access = new StoredAccess())
     {
@@ -49,14 +53,21 @@ final class Tracker
             return null;
         }
 
+        $last = self::lastAnswers()[$number] ?? self::fromBefore09($number);
+
         if ($mode !== self::REFRESH) {
-            return self::lastAnswers()[$number] ?? null;
+            return $last;
         }
 
         try {
             $shipment = $this->ask($number);
         } catch (DhlApiException) {
             return null;
+        }
+
+        // DHL has forgotten numbers it once knew (letters, measured 2026-10-27): a 404 does not erase a known answer.
+        if ($shipment === null && is_array($last) && ($last['known'] ?? false) === true) {
+            return $last;
         }
 
         return self::remember($shipment === null ? self::notScannedYet($number) : self::summary($shipment));
@@ -74,6 +85,27 @@ final class Tracker
         $all = self::lastAnswers();
         unset($all[$answer['tracking_number']]);
         $all[$answer['tracking_number']] = $answer;
+        update_option(self::LAST, array_slice($all, -self::KEPT, null, true), false);
+
+        return $answer;
+    }
+
+    /**
+     * Answers up to 0.0.8 sat in a transient per number; read once so they are not lost with the update.
+     *
+     * @return array<string, mixed>|null `mixed`: the summary array
+     */
+    private static function fromBefore09(string $number): ?array
+    {
+        $cached = get_transient(self::OLD_CACHE . md5($number));
+
+        if (! is_array($cached) || ! is_array($cached['result'] ?? null)) {
+            return null;
+        }
+
+        $answer = $cached['result'] + ['known' => true, 'events' => [], 'checked_at' => 0];
+        $all = self::lastAnswers();
+        $all[$number] = $answer;
         update_option(self::LAST, array_slice($all, -self::KEPT, null, true), false);
 
         return $answer;
@@ -97,6 +129,7 @@ final class Tracker
         }
 
         $this->spend();
+        self::keepGap();
 
         // No second call with the hint `post-de` for a letter's matrix code: the production app answers HTTP 400
         // «Provided service 'post-de' is unknown» (measured 2026-10-27).
@@ -159,6 +192,18 @@ final class Tracker
         }
 
         update_option(self::BUDGET, ['day' => $today['day'], 'calls' => $today['calls'] + 1], false);
+    }
+
+    /** Waits until GAP_SECONDS have passed since the last call to DHL, so a refresh of several numbers is not refused. */
+    private static function keepGap(): void
+    {
+        $wait = (float) get_option(self::LAST_CALL, 0) + self::GAP_SECONDS - microtime(true);
+
+        if ($wait > 0) {
+            usleep((int) (min($wait, self::GAP_SECONDS) * 1_000_000));
+        }
+
+        update_option(self::LAST_CALL, microtime(true), false);
     }
 
     private static function language(): string
