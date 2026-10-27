@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.3';
+    public const VERSION    = '0.0.4';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -145,7 +145,7 @@ final class Plugin
                 $this->notice(false, TrackingClient::isLetterCode($number)
                     ? sprintf(
                         /* translators: %s: matrix code of a letter */
-                        __('%s is the matrix code of a letter; DHL tracking knows it neither as parcel nor as Deutsche Post letter. Plain letters are not tracked, only registered ones.', 'taxapidhl'),
+                        __('%s is the matrix code of a Deutsche Post letter. The DHL tracking API does not know letters; plain letters have no tracking at all.', 'taxapidhl'),
                         $number
                     )
                     : sprintf(

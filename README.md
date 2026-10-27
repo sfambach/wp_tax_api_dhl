@@ -3,11 +3,11 @@
 DHL tracking for the [Taxonomy Modeller](https://github.com/sfambach/wp-taxonomy-modeler) (WordPress plugin), over
 DHL's [Shipment Tracking – Unified API](https://developer.dhl.com/api-reference/shipment-tracking).
 
-**Status 0.0.3: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
+**Status 0.0.4: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
 server switch sandbox / production, «Test connection», a read-only probe that tracks one number and lists its events,
 and the filter `taxmod_dhl_tracking` for other modules. New in 0.0.2: Internetmarke access (app secret + Portokasse
 login, sealed) and a probe «Check Portokasse» that shows the balance and the print formats, label printers first —
-step 1 towards printing letter postage on the 62 mm label printer. It buys nothing. 0.0.3: a matrix code of a Deutsche Post letter (20 hex characters) that DHL does not find is asked once more with the hint `post-de`. Not yet tested against DHL or
+step 1 towards printing letter postage on the 62 mm label printer. It buys nothing. 0.0.4: a matrix code of a Deutsche Post letter (20 hex characters) is reported as a letter; the hint `post-de` is refused by the production app (HTTP 400), so it is not tried. Not yet tested against DHL or
 the Post. Nothing is written to the model.**
 
 ## Idea in short
