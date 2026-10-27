@@ -3,7 +3,7 @@
 DHL tracking for the [Taxonomy Modeller](https://github.com/sfambach/wp-taxonomy-modeler) (WordPress plugin), over
 DHL's [Shipment Tracking – Unified API](https://developer.dhl.com/api-reference/shipment-tracking).
 
-**Status 0.0.8: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
+**Status 0.0.9: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
 server switch sandbox / production, «Test connection», a read-only probe that tracks one number and lists its events,
 and the filter `taxmod_dhl_tracking` for other modules. New in 0.0.2: Internetmarke access (app secret + Portokasse
 login, sealed) and a probe «Check Portokasse» that shows the balance and the print formats, label printers first —
@@ -44,14 +44,15 @@ register a second Portokasse and ask it-csp@deutschepost.de to turn it into a de
 ## For other modules
 
 ```php
-$state = apply_filters('taxmod_dhl_tracking', null, $trackingNumber);
-// null when no key, budget used up or DHL failed; otherwise
+$state = apply_filters('taxmod_dhl_tracking', null, $trackingNumber);             // last loaded answer, no call to DHL
+$state = apply_filters('taxmod_dhl_tracking', null, $trackingNumber, 'refresh');  // asks DHL now and keeps the answer
+// null when nothing was loaded yet, or (refresh) no key, budget used up or DHL failed; otherwise
 // ['tracking_number', 'known', 'stage' => 'announced|shipped|delivered|problem', 'status_code', 'status', 'at', 'shipped_at', 'estimated',
-//  'events' => [['at', 'status_code', 'status', 'description', 'place'], …] newest first (0.0.8; empty if not scanned)]
+//  'events' => [['at', 'status_code', 'status', 'description', 'place'], …] newest first (empty if not scanned), 'checked_at' => Unix time DHL was asked]
 // A number DHL has not scanned yet: 'known' => false, 'stage' => 'announced' (like eBay's «tracking number entered», 0.0.7).
 ```
 
-Each number is asked at most once per interval (setting in the «DHL» tab, 1–24 hours, default 4); all calls of a day stay under 200 (the app's quota is 250).
+DHL is only called on `refresh` (0.0.9: the shipping page refreshes on a click on the number or «Refresh»); the last 500 answers are kept, and all calls of a day stay under 200 (the app's quota is 250).
 
 ## Development
 

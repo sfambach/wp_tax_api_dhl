@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.8';
+    public const VERSION    = '0.0.9';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -35,7 +35,7 @@ final class Plugin
         add_action('admin_post_' . self::PROBE, $plugin->handleProbe(...));
         add_action('admin_post_' . self::PORTOKASSE, $plugin->handlePortokasse(...));
         add_action('admin_footer', SettingsScreen::probeForms(...));
-        add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = ''): ?array => (new Tracker())->filter($previous, $number), 10, 2);
+        add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = '', mixed $mode = Tracker::STORED): ?array => (new Tracker())->filter($previous, $number, $mode), 10, 3);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
     }
 
@@ -80,10 +80,6 @@ final class Plugin
      */
     private static function saveAccess(array $post): bool
     {
-        if (is_scalar($post['taxapidhl_interval_hours'] ?? null)) {
-            Tracker::saveIntervalHours(absint($post['taxapidhl_interval_hours']));
-        }
-
         $access = new StoredAccess();
 
         if ($access->fromConstants() || ! StoredAccess::vaultAvailable()) {
@@ -147,6 +143,8 @@ final class Plugin
 
         try {
             $shipment = (new Tracker())->ask($number, $service, $postalCode);
+
+            Tracker::remember($shipment === null ? Tracker::notScannedYet($number) : Tracker::summary($shipment));
 
             if ($shipment === null) {
                 delete_option(self::LAST_PROBE);

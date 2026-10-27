@@ -9,19 +9,21 @@ use TaxApiDhl\Core\Tracking\Shipment;
 use TaxApiDhl\Core\Tracking\Stage;
 
 /**
- * Answers the filter `taxmod_dhl_tracking` for other modules: one tracking number in, its stage out. Each number is
- * asked at most once per interval (setting, DEFAULT_HOURS), and all calls of a day stay under DAILY_BUDGET, below the app's quota of 250.
+ * Answers the filter `taxmod_dhl_tracking` for other modules: one tracking number in, its stage out. By default it only
+ * hands back what was loaded last and never calls DHL; `refresh` asks DHL now and keeps that answer (Stefan,
+ * 2026-10-27: the shipping page shows the last data and updates only on a click). All calls of a day stay under
+ * DAILY_BUDGET, below the app's quota of 250.
  */
 final class Tracker
 {
-    public const FILTER        = 'taxmod_dhl_tracking';
-    public const DAILY_BUDGET  = 200;
-    public const DEFAULT_HOURS = 4;
-    public const MAX_HOURS     = 24;
-    public const INTERVAL      = 'taxmod_dhl_interval_hours';
+    public const FILTER       = 'taxmod_dhl_tracking';
+    public const DAILY_BUDGET = 200;
+    public const STORED       = 'stored';
+    public const REFRESH      = 'refresh';
 
-    private const CACHE  = 'taxdhl_track_';
-    private const BUDGET = 'taxmod_dhl_calls';
+    private const LAST    = 'taxmod_dhl_last_answers';
+    private const KEPT    = 500;
+    private const BUDGET  = 'taxmod_dhl_calls';
 
     public function __construct(private readonly StoredAccess $access = new StoredAccess())
     {
@@ -29,11 +31,13 @@ final class Tracker
 
     /**
      * @param mixed $previous what an earlier callback returned; `mixed` because filters pass anything along
-     * @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string, events: list<array{at: string, status_code: string, status: string, description: string, place: string}>}|null
-     *         null when no key is set, the budget is used up or DHL failed; a number DHL has not scanned yet comes back
-     *         as `known` false, stage `announced` — like eBay's «tracking number entered»
+     * @param mixed $mode `stored` (default: the last answer, no call) or `refresh` (ask DHL now)
+     * @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string, events: list<array{at: string, status_code: string, status: string, description: string, place: string}>, checked_at: int}|null
+     *         null when nothing was loaded yet (stored), or no key is set, the budget is used up or DHL failed
+     *         (refresh); a number DHL has not scanned yet comes back as `known` false, stage `announced` — like
+     *         eBay's «tracking number entered»; `checked_at` is when DHL was asked (Unix time)
      */
-    public function filter(mixed $previous, mixed $trackingNumber): ?array
+    public function filter(mixed $previous, mixed $trackingNumber, mixed $mode = self::STORED): ?array
     {
         if (is_array($previous)) {
             return $previous;
@@ -45,10 +49,8 @@ final class Tracker
             return null;
         }
 
-        $cached = get_transient(self::CACHE . md5($number));
-
-        if (is_array($cached) && is_array($cached['result'] ?? null)) {
-            return $cached['result'];
+        if ($mode !== self::REFRESH) {
+            return self::lastAnswers()[$number] ?? null;
         }
 
         try {
@@ -57,10 +59,32 @@ final class Tracker
             return null;
         }
 
-        $result = $shipment === null ? self::notScannedYet($number) : self::summary($shipment);
-        set_transient(self::CACHE . md5($number), ['result' => $result], self::intervalHours() * HOUR_IN_SECONDS);
+        return self::remember($shipment === null ? self::notScannedYet($number) : self::summary($shipment));
+    }
 
-        return $result;
+    /**
+     * Keeps a fresh answer as the number's last one; the oldest go once more than KEPT numbers are known.
+     *
+     * @param array<string, mixed> $answer `mixed`: the summary array
+     * @return array<string, mixed>
+     */
+    public static function remember(array $answer): array
+    {
+        $answer['checked_at'] = time();
+        $all = self::lastAnswers();
+        unset($all[$answer['tracking_number']]);
+        $all[$answer['tracking_number']] = $answer;
+        update_option(self::LAST, array_slice($all, -self::KEPT, null, true), false);
+
+        return $answer;
+    }
+
+    /** @return array<string, array<string, mixed>> number → last answer, oldest first; `mixed`: the summary array */
+    private static function lastAnswers(): array
+    {
+        $stored = get_option(self::LAST, []);
+
+        return is_array($stored) ? $stored : [];
     }
 
     /** One call to DHL, counted against the day's budget. */
@@ -77,22 +101,6 @@ final class Tracker
         // No second call with the hint `post-de` for a letter's matrix code: the production app answers HTTP 400
         // «Provided service 'post-de' is unknown» (measured 2026-10-27).
         return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
-    }
-
-    /** How many hours a tracking number's answer is kept before DHL is asked again; 1 to MAX_HOURS. */
-    public static function intervalHours(): int
-    {
-        return self::clampHours((int) get_option(self::INTERVAL, self::DEFAULT_HOURS));
-    }
-
-    public static function saveIntervalHours(int $hours): void
-    {
-        update_option(self::INTERVAL, self::clampHours($hours), false);
-    }
-
-    private static function clampHours(int $hours): int
-    {
-        return $hours < 1 ? self::DEFAULT_HOURS : min($hours, self::MAX_HOURS);
     }
 
     /** @return array{day: string, calls: int} */
