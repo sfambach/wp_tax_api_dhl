@@ -5,6 +5,7 @@ namespace TaxApiDhl\WordPress;
 use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\TrackingClient;
 use TaxApiDhl\Core\Tracking\Shipment;
+use TaxApiDhl\Core\Tracking\Stage;
 
 /**
  * Answers the filter `taxmod_dhl_tracking` for other modules: one tracking number in, its stage out. Each number is
@@ -25,8 +26,9 @@ final class Tracker
 
     /**
      * @param mixed $previous what an earlier callback returned; `mixed` because filters pass anything along
-     * @return array{tracking_number: string, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string}|null
-     *         null when DHL knows the number not, no key is set or the budget is used up
+     * @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string}|null
+     *         null when no key is set, the budget is used up or DHL failed; a number DHL has not scanned yet comes back
+     *         as `known` false, stage `announced` — like eBay's «tracking number entered»
      */
     public function filter(mixed $previous, mixed $trackingNumber): ?array
     {
@@ -42,8 +44,8 @@ final class Tracker
 
         $cached = get_transient(self::CACHE . md5($number));
 
-        if (is_array($cached)) {
-            return $cached['found'] ? $cached['result'] : null;
+        if (is_array($cached) && is_array($cached['result'] ?? null)) {
+            return $cached['result'];
         }
 
         try {
@@ -52,8 +54,8 @@ final class Tracker
             return null;
         }
 
-        $result = $shipment === null ? null : self::summary($shipment);
-        set_transient(self::CACHE . md5($number), ['found' => $result !== null, 'result' => $result], self::CACHE_SECONDS);
+        $result = $shipment === null ? self::notScannedYet($number) : self::summary($shipment);
+        set_transient(self::CACHE . md5($number), ['result' => $result], self::CACHE_SECONDS);
 
         return $result;
     }
@@ -83,17 +85,33 @@ final class Tracker
         return is_array($stored) && ($stored['day'] ?? '') === $today ? ['day' => $today, 'calls' => (int) ($stored['calls'] ?? 0)] : ['day' => $today, 'calls' => 0];
     }
 
-    /** @return array{tracking_number: string, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string} */
+    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string} */
     public static function summary(Shipment $shipment): array
     {
         return [
             'tracking_number' => $shipment->trackingNumber,
+            'known'           => true,
             'stage'           => $shipment->stage()->value,
             'status_code'     => $shipment->statusCode,
             'status'          => $shipment->status,
             'at'              => $shipment->timestamp,
             'shipped_at'      => $shipment->firstMovement(),
             'estimated'       => $shipment->estimatedDelivery,
+        ];
+    }
+
+    /** @return array{tracking_number: string, known: bool, stage: string, status_code: string, status: string, at: string, shipped_at: string, estimated: string} */
+    public static function notScannedYet(string $number): array
+    {
+        return [
+            'tracking_number' => $number,
+            'known'           => false,
+            'stage'           => Stage::Announced->value,
+            'status_code'     => '',
+            'status'          => '',
+            'at'              => '',
+            'shipped_at'      => '',
+            'estimated'       => '',
         ];
     }
 

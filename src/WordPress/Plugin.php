@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.6';
+    public const VERSION    = '0.0.7';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -146,9 +146,10 @@ final class Plugin
 
             if ($shipment === null) {
                 delete_option(self::LAST_PROBE);
-                $this->notice(false, sprintf(
+                // Like eBay: a number DHL has not scanned yet is «entered», not an error; letters appear after the first scan.
+                $this->notice(true, sprintf(
                     /* translators: 1: tracking number, 2: service hint or «automatic» */
-                    __('DHL knows no shipment %1$s (service: %2$s).', 'taxapidhl'),
+                    __('%1$s: tracking number entered — DHL has no scan yet (service: %2$s). Stage: announced.', 'taxapidhl'),
                     $number,
                     $service === '' ? __('automatic', 'taxapidhl') : $service
                 ));

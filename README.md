@@ -3,7 +3,7 @@
 DHL tracking for the [Taxonomy Modeller](https://github.com/sfambach/wp-taxonomy-modeler) (WordPress plugin), over
 DHL's [Shipment Tracking – Unified API](https://developer.dhl.com/api-reference/shipment-tracking).
 
-**Status 0.0.6: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
+**Status 0.0.7: API key in the common «Access» part of the modeller's «DHL» tab (sealed in the modeller's vault),
 server switch sandbox / production, «Test connection», a read-only probe that tracks one number and lists its events,
 and the filter `taxmod_dhl_tracking` for other modules. New in 0.0.2: Internetmarke access (app secret + Portokasse
 login, sealed) and a probe «Check Portokasse» that shows the balance and the print formats, label printers first —
@@ -45,8 +45,9 @@ register a second Portokasse and ask it-csp@deutschepost.de to turn it into a de
 
 ```php
 $state = apply_filters('taxmod_dhl_tracking', null, $trackingNumber);
-// null when unknown, no key or budget used up; otherwise
-// ['tracking_number', 'stage' => 'announced|shipped|delivered|problem', 'status_code', 'status', 'at', 'shipped_at', 'estimated']
+// null when no key, budget used up or DHL failed; otherwise
+// ['tracking_number', 'known', 'stage' => 'announced|shipped|delivered|problem', 'status_code', 'status', 'at', 'shipped_at', 'estimated']
+// A number DHL has not scanned yet: 'known' => false, 'stage' => 'announced' (like eBay's «tracking number entered», 0.0.7).
 ```
 
 Each number is asked at most every two hours; all calls of a day stay under 200 (the app's quota is 250).
