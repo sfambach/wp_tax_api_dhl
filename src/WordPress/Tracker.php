@@ -68,8 +68,16 @@ final class Tracker
         }
 
         $this->spend();
+        $client = new TrackingClient(new WpHttpTransport(), $key, $this->access->environment());
+        $shipment = $client->shipment($number, self::language());
 
-        return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language());
+        // Unhinted, DHL looked for a matrix code of a letter among parcels; one more call asks Deutsche Post itself.
+        if ($shipment === null && TrackingClient::isLetterCode($number)) {
+            $this->spend();
+            $shipment = $client->shipment(strtoupper($number), self::language(), 'post-de');
+        }
+
+        return $shipment;
     }
 
     /** @return array{day: string, calls: int} */

@@ -19,13 +19,20 @@ final class TrackingClient
     ) {
     }
 
+    /** Deutsche Post letters carry a matrix code id of 20 hex characters (also Internetmarke's `trackId`). */
+    public static function isLetterCode(string $trackingNumber): bool
+    {
+        return preg_match('/^[0-9A-F]{20}$/', strtoupper($trackingNumber)) === 1;
+    }
+
     /**
+     * @param string $service DHL's hint which division to ask (`post-de`, `parcel-de`…); empty lets DHL guess
      * @return Shipment|null null when DHL knows no shipment with this number (HTTP 404)
      * @throws DhlApiException on a refused key, an exceeded quota or any other failure
      */
-    public function shipment(string $trackingNumber, string $language = 'de'): ?Shipment
+    public function shipment(string $trackingNumber, string $language = 'de', string $service = ''): ?Shipment
     {
-        $query = http_build_query(['trackingNumber' => $trackingNumber, 'language' => $language]);
+        $query = http_build_query(array_filter(['trackingNumber' => $trackingNumber, 'service' => $service, 'language' => $language], static fn (string $value): bool => $value !== ''));
         $response = $this->transport->send(new HttpRequest('GET', $this->environment->baseUrl() . '/shipments?' . $query, [
             'DHL-API-Key' => $this->apiKey,
             'Accept'      => 'application/json',

@@ -60,6 +60,22 @@ final class TrackingClientTest extends TestCase
         self::assertSame('key accepted, sample number unknown', $test->run());
     }
 
+    public function testServiceHintGoesIntoTheQuery(): void
+    {
+        $transport = new ScriptedTransport([new HttpResponse(404, '')]);
+        (new TrackingClient($transport, 'k'))->shipment('A005EFF1A1000000043E', 'de', 'post-de');
+
+        self::assertSame('https://api-eu.dhl.com/track/shipments?trackingNumber=A005EFF1A1000000043E&service=post-de&language=de', $transport->sent[0]->url);
+    }
+
+    public function testRecognisesTheMatrixCodeOfALetter(): void
+    {
+        self::assertTrue(TrackingClient::isLetterCode('A005EFF1A1000000043E'));
+        self::assertTrue(TrackingClient::isLetterCode('af188fffee0000005f0e'));
+        self::assertFalse(TrackingClient::isLetterCode('00340434292135100162'.'X'));
+        self::assertFalse(TrackingClient::isLetterCode('7BQCFDV5F9Z8'));
+    }
+
     private static function example(): string
     {
         return (string) file_get_contents(__DIR__ . '/fixtures/shipments-example.json');
