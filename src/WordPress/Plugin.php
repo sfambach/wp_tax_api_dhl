@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.5';
+    public const VERSION    = '0.0.6';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -151,7 +151,7 @@ final class Plugin
                     __('DHL knows no shipment %1$s (service: %2$s).', 'taxapidhl'),
                     $number,
                     $service === '' ? __('automatic', 'taxapidhl') : $service
-                ) . (TrackingClient::isLetterCode($number) && $service === '' ? ' ' . __('This is the matrix code of a Deutsche Post letter; try the service «parcel-de», optionally with the recipient\'s postal code.', 'taxapidhl') : ''));
+                ));
             } else {
                 update_option(self::LAST_PROBE, [
                     'at'      => current_time('mysql'),

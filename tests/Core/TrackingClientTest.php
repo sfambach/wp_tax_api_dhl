@@ -68,12 +68,13 @@ final class TrackingClientTest extends TestCase
         self::assertSame('https://api-eu.dhl.com/track/shipments?trackingNumber=A005EFF1A1000000043E&service=parcel-de&recipientPostalCode=53113&language=de', $transport->sent[0]->url);
     }
 
-    public function testRecognisesTheMatrixCodeOfALetter(): void
+    public function testKeepsTheAskedNumberWhenDhlAnswersWithAnInternalId(): void
     {
-        self::assertTrue(TrackingClient::isLetterCode('A005EFF1A1000000043E'));
-        self::assertTrue(TrackingClient::isLetterCode('af188fffee0000005f0e'));
-        self::assertFalse(TrackingClient::isLetterCode('00340434292135100162'.'X'));
-        self::assertFalse(TrackingClient::isLetterCode('7BQCFDV5F9Z8'));
+        $body = '{"shipments":[{"id":"7978A405-86D6-4928-B58D-263FFBD3CD97","service":"svb","status":{"timestamp":"2026-10-26T03:44:19+01:00","statusCode":"transit"}}]}';
+        $shipment = (new TrackingClient(new ScriptedTransport([new HttpResponse(200, $body)]), 'k'))->shipment('A005EFF1A1000000042D');
+
+        self::assertSame('A005EFF1A1000000042D', $shipment?->trackingNumber);
+        self::assertSame('svb', $shipment?->service);
     }
 
     private static function example(): string

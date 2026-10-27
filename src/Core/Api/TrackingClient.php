@@ -23,12 +23,6 @@ final class TrackingClient
     public const SERVICES = ['dgf', 'dsc', 'ecommerce', 'ecommerce-apac', 'ecommerce-europe', 'ecommerce-ppl', 'ecommerce-iberia', 'express', 'freight',
         'parcel-de', 'parcel-nl', 'parcel-pl', 'parcel-uk', 'post-de', 'post-international', 'sameday', 'svb'];
 
-    /** Deutsche Post letters carry a matrix code id of 20 hex characters (also Internetmarke's `trackId`). */
-    public static function isLetterCode(string $trackingNumber): bool
-    {
-        return preg_match('/^[0-9A-F]{20}$/', strtoupper($trackingNumber)) === 1;
-    }
-
     /**
      * @param string $service DHL's hint which division to ask (`parcel-de`, `express`…); empty lets DHL guess
      * @param string $recipientPostalCode parcel-de and parcel-nl show the full data only with it
@@ -59,7 +53,7 @@ final class TrackingClient
         $shipments = $response->json()['shipments'] ?? null;
         $first = is_array($shipments) ? ($shipments[0] ?? null) : null;
 
-        return is_array($first) ? Shipment::fromApi($first) : null;
+        return is_array($first) ? Shipment::fromApi($first, $trackingNumber) : null;
     }
 
     private static function problem(HttpResponse $response): string

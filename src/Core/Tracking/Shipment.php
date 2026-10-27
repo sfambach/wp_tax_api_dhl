@@ -20,8 +20,11 @@ final class Shipment
     ) {
     }
 
-    /** @param array<string, mixed> $data one entry of `shipments`; `mixed` because DHL leaves fields out freely */
-    public static function fromApi(array $data): self
+    /**
+     * @param array<string, mixed> $data one entry of `shipments`; `mixed` because DHL leaves fields out freely
+     * @param string $askedNumber the number asked for; DHL's `id` is an internal UUID for some services (svb, letters)
+     */
+    public static function fromApi(array $data, string $askedNumber = ''): self
     {
         $text = static fn (mixed $value): string => is_string($value) ? trim($value) : '';
         $status = is_array($data['status'] ?? null) ? Event::fromApi($data['status']) : Event::fromApi([]);
@@ -31,7 +34,7 @@ final class Shipment
         ));
 
         return new self(
-            $text($data['id'] ?? null),
+            $askedNumber !== '' ? $askedNumber : $text($data['id'] ?? null),
             $text($data['service'] ?? null),
             $status->statusCode,
             $status->description !== '' ? $status->description : $status->status,
