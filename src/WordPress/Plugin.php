@@ -14,7 +14,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.4';
+    public const VERSION    = '0.0.5';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -132,27 +132,26 @@ final class Plugin
         check_admin_referer(self::PROBE);
         $number = isset($_POST['tracking']) ? (string) preg_replace('/[^A-Za-z0-9]/', '', sanitize_text_field(wp_unslash($_POST['tracking']))) : '';
 
+        $service = isset($_POST['service']) ? sanitize_key(wp_unslash($_POST['service'])) : '';
+        $service = in_array($service, TrackingClient::SERVICES, true) ? $service : '';
+        $postalCode = isset($_POST['postal_code']) ? (string) preg_replace('/[^A-Za-z0-9]/', '', sanitize_text_field(wp_unslash($_POST['postal_code']))) : '';
+
         if ($number === '') {
             $this->notice(false, __('Enter a tracking number.', 'taxapidhl'));
             $this->back();
         }
 
         try {
-            $shipment = (new Tracker())->ask($number);
+            $shipment = (new Tracker())->ask($number, $service, $postalCode);
 
             if ($shipment === null) {
                 delete_option(self::LAST_PROBE);
-                $this->notice(false, TrackingClient::isLetterCode($number)
-                    ? sprintf(
-                        /* translators: %s: matrix code of a letter */
-                        __('%s is the matrix code of a Deutsche Post letter. The DHL tracking API does not know letters; plain letters have no tracking at all.', 'taxapidhl'),
-                        $number
-                    )
-                    : sprintf(
-                        /* translators: %s: tracking number */
-                        __('DHL knows no shipment %s.', 'taxapidhl'),
-                        $number
-                    ));
+                $this->notice(false, sprintf(
+                    /* translators: 1: tracking number, 2: service hint or «automatic» */
+                    __('DHL knows no shipment %1$s (service: %2$s).', 'taxapidhl'),
+                    $number,
+                    $service === '' ? __('automatic', 'taxapidhl') : $service
+                ) . (TrackingClient::isLetterCode($number) && $service === '' ? ' ' . __('This is the matrix code of a Deutsche Post letter; try the service «parcel-de», optionally with the recipient\'s postal code.', 'taxapidhl') : ''));
             } else {
                 update_option(self::LAST_PROBE, [
                     'at'      => current_time('mysql'),

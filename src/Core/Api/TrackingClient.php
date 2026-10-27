@@ -19,6 +19,10 @@ final class TrackingClient
     ) {
     }
 
+    /** The values DHL's specification 1.5.8 lists for `service`; which of them an app may use depends on its approval. */
+    public const SERVICES = ['dgf', 'dsc', 'ecommerce', 'ecommerce-apac', 'ecommerce-europe', 'ecommerce-ppl', 'ecommerce-iberia', 'express', 'freight',
+        'parcel-de', 'parcel-nl', 'parcel-pl', 'parcel-uk', 'post-de', 'post-international', 'sameday', 'svb'];
+
     /** Deutsche Post letters carry a matrix code id of 20 hex characters (also Internetmarke's `trackId`). */
     public static function isLetterCode(string $trackingNumber): bool
     {
@@ -26,13 +30,19 @@ final class TrackingClient
     }
 
     /**
-     * @param string $service DHL's hint which division to ask (`post-de`, `parcel-de`…); empty lets DHL guess
+     * @param string $service DHL's hint which division to ask (`parcel-de`, `express`…); empty lets DHL guess
+     * @param string $recipientPostalCode parcel-de and parcel-nl show the full data only with it
      * @return Shipment|null null when DHL knows no shipment with this number (HTTP 404)
      * @throws DhlApiException on a refused key, an exceeded quota or any other failure
      */
-    public function shipment(string $trackingNumber, string $language = 'de', string $service = ''): ?Shipment
+    public function shipment(string $trackingNumber, string $language = 'de', string $service = '', string $recipientPostalCode = ''): ?Shipment
     {
-        $query = http_build_query(array_filter(['trackingNumber' => $trackingNumber, 'service' => $service, 'language' => $language], static fn (string $value): bool => $value !== ''));
+        $query = http_build_query(array_filter([
+            'trackingNumber'      => $trackingNumber,
+            'service'             => $service,
+            'recipientPostalCode' => $recipientPostalCode,
+            'language'            => $language,
+        ], static fn (string $value): bool => $value !== ''));
         $response = $this->transport->send(new HttpRequest('GET', $this->environment->baseUrl() . '/shipments?' . $query, [
             'DHL-API-Key' => $this->apiKey,
             'Accept'      => 'application/json',

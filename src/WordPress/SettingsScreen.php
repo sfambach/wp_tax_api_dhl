@@ -149,6 +149,8 @@ final class SettingsScreen
     {
         $html = '<h2>' . esc_html__('Track a shipment (probe, nothing is written)', 'taxapidhl') . '</h2>'
             . '<p><input type="text" form="taxapidhl-probe" name="tracking" class="regular-text" placeholder="' . esc_attr__('Tracking number', 'taxapidhl') . '"> '
+            . '<select form="taxapidhl-probe" name="service">' . self::serviceOptions() . '</select> '
+            . '<input type="text" form="taxapidhl-probe" name="postal_code" style="width:8em" placeholder="' . esc_attr__('Recipient postcode', 'taxapidhl') . '"> '
             . '<button type="submit" form="taxapidhl-probe" class="button">' . esc_html__('Track', 'taxapidhl') . '</button></p>';
 
         $last = get_option(Plugin::LAST_PROBE);
@@ -176,6 +178,17 @@ final class SettingsScreen
         }
 
         return $html . '</tbody></table>';
+    }
+
+    private static function serviceOptions(): string
+    {
+        $html = '<option value="">' . esc_html__('Service: automatic', 'taxapidhl') . '</option>';
+
+        foreach (\TaxApiDhl\Core\Api\TrackingClient::SERVICES as $service) {
+            $html .= '<option value="' . esc_attr($service) . '">' . esc_html($service) . '</option>';
+        }
+
+        return $html;
     }
 
     /** The probes' own forms, printed after the modeller's page so they do not nest in the tab's form. */

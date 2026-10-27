@@ -59,7 +59,7 @@ final class Tracker
     }
 
     /** One call to DHL, counted against the day's budget. */
-    public function ask(string $number): ?Shipment
+    public function ask(string $number, string $service = '', string $recipientPostalCode = ''): ?Shipment
     {
         $key = $this->access->apiKey();
 
@@ -71,7 +71,7 @@ final class Tracker
 
         // No second call with the hint `post-de` for a letter's matrix code: the production app answers HTTP 400
         // «Provided service 'post-de' is unknown» (measured 2026-10-27).
-        return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language());
+        return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
     }
 
     /** @return array{day: string, calls: int} */

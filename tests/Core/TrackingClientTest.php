@@ -63,9 +63,9 @@ final class TrackingClientTest extends TestCase
     public function testServiceHintGoesIntoTheQuery(): void
     {
         $transport = new ScriptedTransport([new HttpResponse(404, '')]);
-        (new TrackingClient($transport, 'k'))->shipment('A005EFF1A1000000043E', 'de', 'post-de');
+        (new TrackingClient($transport, 'k'))->shipment('A005EFF1A1000000043E', 'de', 'parcel-de', '53113');
 
-        self::assertSame('https://api-eu.dhl.com/track/shipments?trackingNumber=A005EFF1A1000000043E&service=post-de&language=de', $transport->sent[0]->url);
+        self::assertSame('https://api-eu.dhl.com/track/shipments?trackingNumber=A005EFF1A1000000043E&service=parcel-de&recipientPostalCode=53113&language=de', $transport->sent[0]->url);
     }
 
     public function testRecognisesTheMatrixCodeOfALetter(): void
