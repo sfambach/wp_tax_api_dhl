@@ -41,6 +41,10 @@ label can be laid out pixel-exact for a label printer. Access = client id and se
 register a second Portokasse and ask it-csp@deutschepost.de to turn it into a developer Portokasse (stamps print
 «Muster», no charge).
 
+## Mails
+
+With Taxmod Mail, this module also reads DHL's parcel notices («Ihre … Sendung ist unterwegs», «… wurde zugestellt»). They name no order, only the tracking number, so the modeller hands them to the order carrying that number, whatever shop it came from. Without such an order a notice brings nothing. Label mails («Online Frankierung») are still read by Taxmod Mail.
+
 ## For other modules
 
 ```php

@@ -7,6 +7,8 @@ use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\Environment;
 use TaxApiDhl\Core\Api\TrackingClient;
 use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
+use TaxApiDhl\Core\Mail\DhlNoticeMailParser;
+use Taxmod\Core\Import\Mail\OrderMailParser;
 
 /**
  * The boundary: the «DHL» tab of the modeller's Configuration page (D-945, D-981), the connection test, the probe
@@ -14,7 +16,7 @@ use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.10';
+    public const VERSION    = '0.0.11';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -37,6 +39,24 @@ final class Plugin
         add_action('admin_footer', SettingsScreen::probeForms(...));
         add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = '', mixed $mode = Tracker::STORED): ?array => (new Tracker())->filter($previous, $number, $mode), 10, 3);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
+        // Late: this plugin loads before the modeller, which brings the mail contract (0.1.81 or later).
+        add_action('plugins_loaded', static function (): void {
+            if (self::mailReader() !== null) {
+                add_filter('taxmail_parsers', static fn (array $parsers): array => [...$parsers, self::mailReader()]);
+            }
+        });
+    }
+
+    /** DHL's parcel notices, read for the modeller's inbox (D-1018); null without the modeller's mail contract. */
+    public static function mailReader(): ?OrderMailParser
+    {
+        static $reader = null;
+
+        if ($reader === null && interface_exists(OrderMailParser::class)) {
+            $reader = new DhlNoticeMailParser(self::VERSION);
+        }
+
+        return $reader;
     }
 
     /**
@@ -57,7 +77,7 @@ final class Plugin
             'render'      => fn (): string => (new SettingsScreen(new StoredAccess()))->fields($this->takeNotices()),
             'save'        => static fn (array $post): bool => self::saveAccess($post),
             'guide'       => static fn (): string => SettingsScreen::guide(),
-        ];
+        ] + (self::mailReader() !== null ? ['reader' => self::mailReader()] : []);
 
         return $tabs;
     }
