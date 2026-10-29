@@ -9,7 +9,7 @@ use Taxmod\Core\Import\ProposalKind;
 
 /**
  * DHL's parcel notices («Ihre AMAZON Sendung ist unterwegs», «… wurde zugestellt»): no shop order, only the tracking
- * number. The modeller gives them to the order that carries that number, whatever shop it is from (D-1018).
+ * number. The modeller gives them to the order that carries that number, whatever shop it is from (D-1020).
  * The label mails («Online Frankierung») are not notices; Taxmod Mail still reads those.
  *
  * @see https://github.com/sfambach/wp-taxonomy-modeler/blob/main/docs/pakete/import/module-schnitt.md

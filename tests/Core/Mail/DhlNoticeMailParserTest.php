@@ -8,7 +8,7 @@ use Taxmod\Core\Import\Mail\MailMessage;
 use Taxmod\Core\Import\Mail\MimeParser;
 
 /**
- * Synthetic notices shaped like the real ones of 2026-10-19/20 (D-1018).
+ * Synthetic notices shaped like the real ones of 2026-10-19/20 (D-1020).
  */
 final class DhlNoticeMailParserTest extends TestCase
 {

@@ -47,7 +47,7 @@ final class Plugin
         });
     }
 
-    /** DHL's parcel notices, read for the modeller's inbox (D-1018); null without the modeller's mail contract. */
+    /** DHL's parcel notices, read for the modeller's inbox (D-1020); null without the modeller's mail contract. */
     public static function mailReader(): ?OrderMailParser
     {
         static $reader = null;
