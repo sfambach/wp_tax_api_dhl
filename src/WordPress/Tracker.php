@@ -29,6 +29,12 @@ final class Tracker
     // DHL allows one call every 5 seconds per app; faster calls are refused (developer.dhl.com/tracking, 2026-10-27).
     private const GAP_SECONDS = 5;
 
+    /** @var array<string, array<string, mixed>>|null the stored answers, unserialized once per request; `mixed`: the summary array */
+    private static ?array $last = null;
+
+    /** Whether any answer from before 0.0.9 is still stored — asked once per request, not once per number. */
+    private static ?bool $oldCache = null;
+
     public function __construct(private readonly StoredAccess $access = new StoredAccess())
     {
     }
@@ -85,7 +91,7 @@ final class Tracker
         $all = self::lastAnswers();
         unset($all[$answer['tracking_number']]);
         $all[$answer['tracking_number']] = $answer;
-        update_option(self::LAST, array_slice($all, -self::KEPT, null, true), false);
+        self::keep($all);
 
         return $answer;
     }
@@ -97,6 +103,10 @@ final class Tracker
      */
     private static function fromBefore09(string $number): ?array
     {
+        if (! self::hasOldCache()) {
+            return null;
+        }
+
         $cached = get_transient(self::OLD_CACHE . md5($number));
 
         if (! is_array($cached) || ! is_array($cached['result'] ?? null)) {
@@ -106,7 +116,7 @@ final class Tracker
         $answer = $cached['result'] + ['known' => true, 'events' => [], 'checked_at' => 0];
         $all = self::lastAnswers();
         $all[$number] = $answer;
-        update_option(self::LAST, array_slice($all, -self::KEPT, null, true), false);
+        self::keep($all);
 
         return $answer;
     }
@@ -114,9 +124,33 @@ final class Tracker
     /** @return array<string, array<string, mixed>> number → last answer, oldest first; `mixed`: the summary array */
     private static function lastAnswers(): array
     {
-        $stored = get_option(self::LAST, []);
+        if (self::$last === null) {
+            $stored     = get_option(self::LAST, []);
+            self::$last = is_array($stored) ? $stored : [];
+        }
 
-        return is_array($stored) ? $stored : [];
+        return self::$last;
+    }
+
+    /** @param array<string, array<string, mixed>> $all `mixed`: the summary array */
+    private static function keep(array $all): void
+    {
+        self::$last = array_slice($all, -self::KEPT, null, true);
+        update_option(self::LAST, self::$last, false);
+    }
+
+    /**
+     * One query instead of two per tracking number (Stefan 2026-11-02: the goods receipt asks for some 200 numbers per page,
+     * most of them never DHL's). Transients kept in an object cache are not seen — they expired four hours after 0.0.8 wrote them.
+     */
+    private static function hasOldCache(): bool
+    {
+        global $wpdb;
+
+        return self::$oldCache ??= $wpdb->get_var($wpdb->prepare(
+            'SELECT 1 FROM ' . $wpdb->options . ' WHERE option_name LIKE %s LIMIT 1',
+            $wpdb->esc_like('_transient_' . self::OLD_CACHE) . '%'
+        )) !== null;
     }
 
     /** One call to DHL, counted against the day's budget. */

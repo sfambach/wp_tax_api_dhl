@@ -16,7 +16,7 @@ use Taxmod\Core\Import\Mail\OrderMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.11';
+    public const VERSION    = '0.0.12';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
