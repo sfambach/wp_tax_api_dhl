@@ -16,7 +16,7 @@ use Taxmod\Core\Import\Mail\OrderMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.13';
+    public const VERSION    = '0.0.14';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -34,8 +34,8 @@ final class Plugin
         $plugin = new self();
 
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
-        add_action('admin_post_' . self::PROBE, $plugin->handleProbe(...));
-        add_action('admin_post_' . self::PORTOKASSE, $plugin->handlePortokasse(...));
+        add_action('admin_post_' . self::PROBE, self::act($plugin->handleProbe(...)));
+        add_action('admin_post_' . self::PORTOKASSE, self::act($plugin->handlePortokasse(...)));
         // Only on this module's tab: `SettingsScreen::probeForms(...)` compiled the settings screen on every page view (D-1187).
         add_action('admin_footer', static function (): void {
             if (($_GET['page'] ?? '') === 'taxmod-settings' && ($_GET['tab'] ?? '') === self::TAB) {
@@ -151,10 +151,10 @@ final class Plugin
     public function handleProbe(): void
     {
         if (! current_user_can(self::CAPABILITY)) {
-            wp_die(esc_html__('You may not use the DHL connection.', 'taxapidhl'), 403);
+            self::refuse(__('You may not use the DHL connection.', 'taxapidhl'));
         }
 
-        check_admin_referer(self::PROBE);
+        self::nonce(self::PROBE);
         $number = isset($_POST['tracking']) ? (string) preg_replace('/[^A-Za-z0-9]/', '', sanitize_text_field(wp_unslash($_POST['tracking']))) : '';
 
         $service = isset($_POST['service']) ? sanitize_key(wp_unslash($_POST['service'])) : '';
@@ -206,10 +206,10 @@ final class Plugin
     public function handlePortokasse(): void
     {
         if (! current_user_can(self::CAPABILITY)) {
-            wp_die(esc_html__('You may not use the DHL connection.', 'taxapidhl'), 403);
+            self::refuse(__('You may not use the DHL connection.', 'taxapidhl'));
         }
 
-        check_admin_referer(self::PORTOKASSE);
+        self::nonce(self::PORTOKASSE);
         $access = (new StoredPortokasse())->access();
 
         if ($access === null) {
@@ -235,6 +235,47 @@ final class Plugin
         }
 
         $this->back();
+    }
+
+    /**
+     * The handler as an act (D-1254): an exception becomes a message in the tab's message field with the way back, never an
+     * empty page. ListPage is named only here, inside the handler, so the boot does not compile it (D-1244).
+     */
+    private static function act(\Closure $handler): \Closure
+    {
+        return static function () use ($handler): void {
+            if (! method_exists(\Taxmod\WordPress\Admin\ListPage::class, 'act')) {
+                $handler();
+
+                return;
+            }
+
+            \Taxmod\WordPress\Admin\ListPage::act(static function () use ($handler): string {
+                $handler();
+
+                return '';
+            }, self::settingsUrl());
+        };
+    }
+
+    /** A refusal (capability, nonce) as a message on the tab instead of a bare error page (D-1254). */
+    /** A stale form is said on its page, through the modeller's own check from 0.2.40 on (D-1254). */
+    private static function nonce(string $action): void
+    {
+        if (method_exists(\Taxmod\WordPress\Admin\ListPage::class, 'nonce')) {
+            \Taxmod\WordPress\Admin\ListPage::nonce($action);
+        } elseif (! wp_verify_nonce(sanitize_text_field(wp_unslash($_POST['_wpnonce'] ?? '')), $action)) {
+            self::refuse(__('The form has expired. Please try again.', 'taxapidhl'));
+        }
+    }
+
+    private static function refuse(string $message): never
+    {
+        if (method_exists(\Taxmod\WordPress\Admin\ListPage::class, 'fail')) {
+            \Taxmod\WordPress\Admin\ListPage::fail($message, self::settingsUrl());
+        }
+
+        wp_die(esc_html($message), '', ['response' => 403, 'back_link' => true]);
     }
 
     public static function settingsUrl(): string
