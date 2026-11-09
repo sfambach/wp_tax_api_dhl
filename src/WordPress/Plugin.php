@@ -16,7 +16,7 @@ use Taxmod\Core\Import\Mail\OrderMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.12';
+    public const VERSION    = '0.0.13';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -36,7 +36,12 @@ final class Plugin
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
         add_action('admin_post_' . self::PROBE, $plugin->handleProbe(...));
         add_action('admin_post_' . self::PORTOKASSE, $plugin->handlePortokasse(...));
-        add_action('admin_footer', SettingsScreen::probeForms(...));
+        // Only on this module's tab: `SettingsScreen::probeForms(...)` compiled the settings screen on every page view (D-1187).
+        add_action('admin_footer', static function (): void {
+            if (($_GET['page'] ?? '') === 'taxmod-settings' && ($_GET['tab'] ?? '') === self::TAB) {
+                SettingsScreen::probeForms();
+            }
+        });
         add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = '', mixed $mode = Tracker::STORED): ?array => (new Tracker())->filter($previous, $number, $mode), 10, 3);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
         // Late: this plugin loads before the modeller, which brings the mail contract (0.1.81 or later).
