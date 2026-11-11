@@ -2,6 +2,7 @@
 
 namespace TaxApiDhl\WordPress;
 
+use Taxmod\WordPress\Admin\ListPage;
 use TaxApiDhl\Core\Api\Environment;
 
 /**
@@ -115,7 +116,7 @@ final class SettingsScreen
         $html = '<h2>' . esc_html__('Portokasse (probe, nothing is bought)', 'taxapidhl') . '</h2>';
 
         if ((new StoredPortokasse($this->access))->access() !== null) {
-            $html .= '<p><button type="submit" form="taxapidhl-portokasse" class="button">' . esc_html__('Check Portokasse', 'taxapidhl') . '</button></p>';
+            $html .= ListPage::toolbar(['<button type="submit" form="taxapidhl-portokasse" class="button">' . esc_html__('Check Portokasse', 'taxapidhl') . '</button>']);
         }
 
         $last = get_option(Plugin::LAST_PORTOKASSE);

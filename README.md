@@ -18,6 +18,8 @@ the Post. Nothing is written to the model.**
 - One place holds the DHL key and the daily quota; other modules only ask the filter.
 - Addresses DHL sends are not stored, only the place of an event.
 
+Needs the Taxonomy Modeller 0.2.67 or later (buttons in the toolbar above each form, D-1308).
+
 ## Setup
 
 1. Sign in at [developer.dhl.com](https://developer.dhl.com), create an app with *Shipment Tracking – Unified*.
