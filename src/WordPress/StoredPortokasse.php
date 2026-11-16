@@ -2,7 +2,7 @@
 
 namespace TaxApiDhl\WordPress;
 
-use Taxmod\Core\Exception\SecretDoesNotOpen;
+use Taxmod\Core\Import\SecretSlot;
 use Taxmod\WordPress\Import\Vault;
 use TaxApiDhl\Core\Internetmarke\PortokasseAccess;
 
@@ -74,15 +74,8 @@ final class StoredPortokasse
 
     private function open(string $sealed): string
     {
-        if ($sealed === '') {
-            return '';
-        }
-
-        try {
-            return Vault::for(self::VAULT_CONTEXT)->open($sealed);
-        } catch (SecretDoesNotOpen) {
-            return '';
-        }
+        // D-1409: opening and «does not open» live once, in the modeller's SecretSlot.
+        return (new SecretSlot('', $sealed, Vault::for(self::VAULT_CONTEXT)))->value() ?? '';
     }
 
     /** @return array{client_id: string, client_secret: string, username: string, password: string} */
