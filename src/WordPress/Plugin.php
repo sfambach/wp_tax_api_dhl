@@ -9,6 +9,7 @@ use TaxApiDhl\Core\Api\TrackingClient;
 use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
 use TaxApiDhl\Core\Mail\DhlNoticeMailParser;
 use Taxmod\Core\Import\Mail\OrderMailParser;
+use Taxmod\Core\Import\Mail\ShopMailParser;
 
 /**
  * The boundary: the «DHL» tab of the modeller's Configuration page (D-945, D-981), the connection test, the probe
@@ -16,7 +17,7 @@ use Taxmod\Core\Import\Mail\OrderMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.15';
+    public const VERSION    = '0.0.16';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -33,6 +34,12 @@ final class Plugin
     {
         $plugin = new self();
 
+        // D-1409: the mail reader stands on the modeller's ShopMailParser; an older modeller gets no reader, and says so.
+        add_action('admin_notices', static function (): void {
+            if (class_exists(\Taxmod\WordPress\Plugin::class, false) && ! class_exists(ShopMailParser::class)) {
+                print '<div class="notice notice-warning"><p><strong>Taxmod DHL:</strong> ' . esc_html__('reads its mails only with the Taxonomy Modeller 0.2.120 or later.', 'taxapidhl') . '</p></div>';
+            }
+        });
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
         add_action('admin_post_' . self::PROBE, self::act($plugin->handleProbe(...)));
         add_action('admin_post_' . self::PORTOKASSE, self::act($plugin->handlePortokasse(...)));
@@ -44,7 +51,7 @@ final class Plugin
         });
         add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = '', mixed $mode = Tracker::STORED): ?array => (new Tracker())->filter($previous, $number, $mode), 10, 3);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
-        // Late: this plugin loads before the modeller, which brings the mail contract (0.1.81 or later).
+        // Late: this plugin loads before the modeller, which brings the mail contract (0.2.120 or later).
         add_action('plugins_loaded', static function (): void {
             if (self::mailReader() !== null) {
                 add_filter('taxmail_parsers', static fn (array $parsers): array => [...$parsers, self::mailReader()]);
@@ -57,7 +64,7 @@ final class Plugin
     {
         static $reader = null;
 
-        if ($reader === null && interface_exists(OrderMailParser::class)) {
+        if ($reader === null && class_exists(ShopMailParser::class)) {
             $reader = new DhlNoticeMailParser(self::VERSION);
         }
 

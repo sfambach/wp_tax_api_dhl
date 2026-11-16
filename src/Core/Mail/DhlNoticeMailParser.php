@@ -3,8 +3,7 @@
 namespace TaxApiDhl\Core\Mail;
 
 use Taxmod\Core\Import\Mail\MailMessage;
-use Taxmod\Core\Import\Mail\OrderMailParser;
-use Taxmod\Core\Import\OrderProposal;
+use Taxmod\Core\Import\Mail\ParcelNoticeMailParser;
 use Taxmod\Core\Import\ProposalKind;
 
 /**
@@ -14,61 +13,33 @@ use Taxmod\Core\Import\ProposalKind;
  *
  * @see https://github.com/sfambach/wp-taxonomy-modeler/blob/main/docs/pakete/import/module-schnitt.md
  */
-final class DhlNoticeMailParser implements OrderMailParser
+final class DhlNoticeMailParser extends ParcelNoticeMailParser
 {
     private const DOMAINS = ['dhl.de', 'dhl.com', 'deutschepost.de'];
 
-    public function __construct(private readonly string $version)
+    public function __construct(string $version)
     {
-    }
-
-    public function key(): string
-    {
-        return 'dhl';
-    }
-
-    public function shopName(): string
-    {
-        return 'DHL';
+        parent::__construct('dhl', 'DHL', self::DOMAINS, $version);
     }
 
     public function recognises(MailMessage $mail): bool
     {
-        $domain = $mail->senderDomain();
-        $fromDhl = array_filter(self::DOMAINS, static fn (string $dhl): bool => $domain === $dhl || str_ends_with($domain, '.' . $dhl)) !== [];
-
-        return $fromDhl && preg_match('/Sendung|Paket/u', $mail->subject) === 1 && ! str_contains($mail->subject, 'Frankierung');
+        return $this->fromDomain($mail) && preg_match('/Sendung|Paket/u', $mail->subject) === 1 && ! str_contains($mail->subject, 'Frankierung');
     }
 
-    public function parse(MailMessage $mail): OrderProposal
+    protected function kind(MailMessage $mail): ProposalKind
     {
         $subject = mb_strtolower($mail->subject);
-        $kind = match (true) {
+
+        return match (true) {
             str_contains($subject, 'zugestellt') => ProposalKind::Delivered,
             str_contains($subject, 'unterwegs') || str_contains($subject, 'kommt heute') => ProposalKind::Shipped,
             default => ProposalKind::NoReceipt,
         };
-        $number = $this->trackingNumber($mail);
-
-        if ($kind === ProposalKind::NoReceipt || $number === null) {
-            return new OrderProposal($this->shopName(), '', ProposalKind::NoReceipt);
-        }
-
-        return new OrderProposal($this->shopName(), 'sendung:' . $number, $kind, trackingNumbers: [$number], numberMissing: true);
-    }
-
-    public function kinds(): array
-    {
-        return [ProposalKind::Shipped, ProposalKind::Delivered];
-    }
-
-    public function version(): string
-    {
-        return $this->version;
     }
 
     /** The number stands on the line after «Ihre Sendungsnummer»; the tracking link names it too. */
-    private function trackingNumber(MailMessage $mail): ?string
+    protected function parcelNumber(MailMessage $mail): ?string
     {
         $lines = $mail->lines();
 
