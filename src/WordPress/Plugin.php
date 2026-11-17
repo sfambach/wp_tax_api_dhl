@@ -31,20 +31,29 @@ final class Plugin
     /** Messages for the next page view of one user, after a redirect. */
     private const NOTICES = 'taxapidhl_notices_';
 
+    /**
+     * Whether the modeller is 0.2.123 or later (D-1409, D-1415) — asked by version, not by loading its classes: method_exists() on
+     * ListPage compiled the 67 KB list page on every page view (D-1187; review 2026-11-17, Befund 6).
+     */
+    private static function modellerFits(): bool
+    {
+        return class_exists(\Taxmod\WordPress\Plugin::class, false) && version_compare(\Taxmod\WordPress\Plugin::VERSION, '0.2.123', '>=');
+    }
+
     public static function boot(): void
     {
         $plugin = new self();
 
         // D-1409, D-1415: this release stands on the modeller 0.2.123 (shared parser frame, HTTP block, ListPage::acting); an older one says so.
         add_action('admin_notices', static function (): void {
-            if (class_exists(\Taxmod\WordPress\Plugin::class, false) && ! method_exists(ListPage::class, 'acting')) {
+            if (class_exists(\Taxmod\WordPress\Plugin::class, false) && ! self::modellerFits()) {
                 print '<div class="notice notice-warning"><p><strong>Taxmod DHL:</strong> ' . esc_html__('needs the Taxonomy Modeller 0.2.123 or later.', 'taxapidhl') . '</p></div>';
             }
         });
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
         // ListPage::acting belongs to the modeller, which loads after this file (alphabetical order): hooked once every plugin is.
         add_action('plugins_loaded', static function () use ($plugin): void {
-            if (! method_exists(ListPage::class, 'acting')) {
+            if (! self::modellerFits() || ! \Taxmod\WordPress\Plugin::handlesAdminActions()) {
                 return;
             }
 
