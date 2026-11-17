@@ -3,9 +3,9 @@
 namespace TaxApiDhl\Core\Internetmarke;
 
 use TaxApiDhl\Core\Api\DhlApiException;
-use TaxApiDhl\Core\Api\HttpRequest;
-use TaxApiDhl\Core\Api\HttpResponse;
-use TaxApiDhl\Core\Api\HttpTransport;
+use Taxmod\Core\Http\HttpRequest;
+use Taxmod\Core\Http\HttpResponse;
+use Taxmod\Core\Http\HttpTransport;
 
 /**
  * The read-only part of the Internetmarke REST API: token with balance, and the catalog of print formats. It buys

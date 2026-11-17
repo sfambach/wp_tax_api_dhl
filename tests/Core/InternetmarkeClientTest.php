@@ -4,7 +4,7 @@ namespace TaxApiDhl\Tests\Core;
 
 use PHPUnit\Framework\TestCase;
 use TaxApiDhl\Core\Api\DhlApiException;
-use TaxApiDhl\Core\Api\HttpResponse;
+use Taxmod\Core\Http\HttpResponse;
 use TaxApiDhl\Core\Internetmarke\InternetmarkeClient;
 use TaxApiDhl\Core\Internetmarke\PortokasseAccess;
 

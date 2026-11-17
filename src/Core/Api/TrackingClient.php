@@ -2,6 +2,10 @@
 
 namespace TaxApiDhl\Core\Api;
 
+use Taxmod\Core\Http\HttpRequest;
+use Taxmod\Core\Http\HttpResponse;
+use Taxmod\Core\Http\HttpTransport;
+
 use TaxApiDhl\Core\Tracking\Shipment;
 
 /**

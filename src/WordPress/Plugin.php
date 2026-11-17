@@ -138,7 +138,7 @@ final class Plugin
         }
 
         try {
-            $answer = (new ConnectionTest(new TrackingClient(new WpHttpTransport(), $key, $access->environment())))->run();
+            $answer = (new ConnectionTest(new TrackingClient(ApiTransport::make(), $key, $access->environment())))->run();
             update_option(self::LAST_CHECK, ['ok' => true, 'at' => current_time('mysql'), 'environment' => $access->environment()->value, 'message' => $answer], false);
 
             return sprintf(
@@ -225,7 +225,7 @@ final class Plugin
         }
 
         try {
-            $client = new InternetmarkeClient(new WpHttpTransport());
+            $client = new InternetmarkeClient(ApiTransport::make());
             $session = $client->session($access);
             update_option(self::LAST_PORTOKASSE, [
                 'at'      => current_time('mysql'),

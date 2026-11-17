@@ -6,7 +6,7 @@ use PHPUnit\Framework\TestCase;
 use TaxApiDhl\Core\Api\ConnectionTest;
 use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\Environment;
-use TaxApiDhl\Core\Api\HttpResponse;
+use Taxmod\Core\Http\HttpResponse;
 use TaxApiDhl\Core\Api\TrackingClient;
 use TaxApiDhl\Core\Tracking\Stage;
 

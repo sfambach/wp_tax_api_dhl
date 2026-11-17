@@ -167,7 +167,7 @@ final class Tracker
 
         // No second call with the hint `post-de` for a letter's matrix code: the production app answers HTTP 400
         // «Provided service 'post-de' is unknown» (measured 2026-10-27).
-        return (new TrackingClient(new WpHttpTransport(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
+        return (new TrackingClient(ApiTransport::make(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
     }
 
     /** @return array{day: string, calls: int} */
