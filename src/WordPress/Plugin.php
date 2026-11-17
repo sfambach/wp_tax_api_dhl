@@ -18,7 +18,7 @@ use Taxmod\Core\Import\Mail\ShopMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.16';
+    public const VERSION    = '0.0.17';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -35,15 +35,22 @@ final class Plugin
     {
         $plugin = new self();
 
-        // D-1409: the mail reader stands on the modeller's ShopMailParser; an older modeller gets no reader, and says so.
+        // D-1409, D-1415: this release stands on the modeller 0.2.123 (shared parser frame, HTTP block, ListPage::acting); an older one says so.
         add_action('admin_notices', static function (): void {
-            if (class_exists(\Taxmod\WordPress\Plugin::class, false) && ! class_exists(ShopMailParser::class)) {
-                print '<div class="notice notice-warning"><p><strong>Taxmod DHL:</strong> ' . esc_html__('reads its mails only with the Taxonomy Modeller 0.2.120 or later.', 'taxapidhl') . '</p></div>';
+            if (class_exists(\Taxmod\WordPress\Plugin::class, false) && ! method_exists(ListPage::class, 'acting')) {
+                print '<div class="notice notice-warning"><p><strong>Taxmod DHL:</strong> ' . esc_html__('needs the Taxonomy Modeller 0.2.123 or later.', 'taxapidhl') . '</p></div>';
             }
         });
         add_filter('taxmod_config_tabs', $plugin->registerTab(...));
-        add_action('admin_post_' . self::PROBE, ListPage::acting($plugin->handleProbe(...), self::settingsUrl()));
-        add_action('admin_post_' . self::PORTOKASSE, ListPage::acting($plugin->handlePortokasse(...), self::settingsUrl()));
+        // ListPage::acting belongs to the modeller, which loads after this file (alphabetical order): hooked once every plugin is.
+        add_action('plugins_loaded', static function () use ($plugin): void {
+            if (! method_exists(ListPage::class, 'acting')) {
+                return;
+            }
+
+            add_action('admin_post_' . self::PROBE, ListPage::acting($plugin->handleProbe(...), self::settingsUrl()));
+            add_action('admin_post_' . self::PORTOKASSE, ListPage::acting($plugin->handlePortokasse(...), self::settingsUrl()));
+        });
         // Only on this module's tab: `SettingsScreen::probeForms(...)` compiled the settings screen on every page view (D-1187).
         add_action('admin_footer', static function (): void {
             if (($_GET['page'] ?? '') === 'taxmod-settings' && ($_GET['tab'] ?? '') === self::TAB) {
