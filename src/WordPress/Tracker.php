@@ -5,13 +5,15 @@ namespace TaxApiDhl\WordPress;
 use TaxApiDhl\Core\Api\DhlApiException;
 use TaxApiDhl\Core\Api\TrackingClient;
 use TaxApiDhl\Core\Tracking\Event;
+use TaxApiDhl\Core\Tracking\Freshness;
 use TaxApiDhl\Core\Tracking\Shipment;
 use TaxApiDhl\Core\Tracking\Stage;
 
 /**
  * Answers the filter `taxmod_dhl_tracking` for other modules: one tracking number in, its stage out. By default it only
  * hands back what was loaded last and never calls DHL; `refresh` asks DHL now and keeps that answer (Stefan,
- * 2026-10-27: the shipping page shows the last data and updates only on a click). All calls of a day stay under
+ * 2026-10-27: the shipping page shows the last data and updates only on a click) — unless the last answer still holds
+ * (D-1435). All calls of a day stay under
  * DAILY_BUDGET, below the app's quota of 250.
  */
 final class Tracker
@@ -20,6 +22,8 @@ final class Tracker
     public const DAILY_BUDGET = 200;
     public const STORED       = 'stored';
     public const REFRESH      = 'refresh';
+    // D-1435: shared with the GLS module, so one setting holds for every carrier.
+    public const FRESH_HOURS  = 'taxmod_tracking_fresh_hours';
 
     private const LAST    = 'taxmod_dhl_last_answers';
     private const KEPT      = 500;
@@ -61,7 +65,8 @@ final class Tracker
 
         $last = self::lastAnswers()[$number] ?? self::fromBefore09($number);
 
-        if ($mode !== self::REFRESH) {
+        // D-1435: an answer younger than the set hours, or a delivered parcel, is not asked again.
+        if ($mode !== self::REFRESH || Freshness::holds($last, time(), self::freshHours())) {
             return $last;
         }
 
@@ -168,6 +173,14 @@ final class Tracker
         // No second call with the hint `post-de` for a letter's matrix code: the production app answers HTTP 400
         // «Provided service 'post-de' is unknown» (measured 2026-10-27).
         return (new TrackingClient(ApiTransport::make(), $key, $this->access->environment()))->shipment($number, self::language(), $service, $recipientPostalCode);
+    }
+
+    /** How long an answer holds before a refresh asks DHL again (D-1435). */
+    public static function freshHours(): float
+    {
+        $hours = get_option(self::FRESH_HOURS, Freshness::DEFAULT_HOURS);
+
+        return is_numeric($hours) ? max(0.0, (float) $hours) : (float) Freshness::DEFAULT_HOURS;
     }
 
     /** @return array{day: string, calls: int} */

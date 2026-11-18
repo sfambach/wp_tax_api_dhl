@@ -18,7 +18,7 @@ use Taxmod\Core\Import\Mail\ShopMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.18';
+    public const VERSION    = '0.0.19';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -129,6 +129,10 @@ final class Plugin
      */
     private static function saveAccess(array $post): bool
     {
+        if (is_numeric($post['taxapidhl_fresh_hours'] ?? null)) {
+            update_option(Tracker::FRESH_HOURS, min(168, max(0, absint($post['taxapidhl_fresh_hours']))), false);
+        }
+
         $access = new StoredAccess();
 
         if ($access->fromConstants() || ! StoredAccess::vaultAvailable()) {

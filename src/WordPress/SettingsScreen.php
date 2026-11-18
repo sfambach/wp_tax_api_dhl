@@ -83,6 +83,11 @@ final class SettingsScreen
             $calls['calls'],
             Tracker::DAILY_BUDGET
         )) . '</p>';
+        // D-1435: one setting for every carrier module; it is saved with the tab.
+        $html .= '<p><label for="taxapidhl-fresh-hours">' . esc_html__('Ask again after (hours)', 'taxapidhl') . '</label> '
+            . '<input type="number" min="0" max="168" step="1" style="width:6em" id="taxapidhl-fresh-hours" name="taxapidhl_fresh_hours" value="'
+            . esc_attr((string) Tracker::freshHours()) . '"> <span class="description">'
+            . esc_html__('A tracking status younger than this is not asked again; delivered parcels never. Holds for DHL and GLS.', 'taxapidhl') . '</span></p>';
 
         return $html . ($this->access->apiKey() === null ? '' : $this->probe()) . $this->portokasse();
     }
@@ -218,7 +223,7 @@ final class SettingsScreen
             __('Choose «Sandbox», enter the key, save and click «Test connection». If the test says the web server cannot reach DHL, your host blocks outgoing calls — applying for production is then pointless.', 'taxapidhl'),
             __('When the test works, request production access for the app in the portal. Once granted, switch the server to «Production» and test again.', 'taxapidhl'),
             __('Optional, for letter postage: add «Post DE Internetmarke» to the app, enter its client secret and your Portokasse login below the key, save and click «Check Portokasse». For tests ask it-csp@deutschepost.de to turn a second Portokasse into a developer Portokasse.', 'taxapidhl'),
-            __('Use «Track» to look at one real shipment. Other modules (eBay shipping) ask this module per tracking number; at most 200 calls a day, only when the shipping page asks for fresh data (click or «Refresh»).', 'taxapidhl'),
+            __('Use «Track» to look at one real shipment. Other modules (eBay shipping) ask this module per tracking number; at most 200 calls a day, only when the shipping page asks for fresh data («Refresh», run in the background), and not again while the last answer is younger than the hours set below.', 'taxapidhl'),
         ];
 
         return '<ol>' . implode('', array_map(static fn (string $step): string => '<li>' . esc_html($step) . '</li>', $steps)) . '</ol>';
