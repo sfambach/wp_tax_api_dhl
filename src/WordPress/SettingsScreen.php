@@ -84,10 +84,10 @@ final class SettingsScreen
             Tracker::DAILY_BUDGET
         )) . '</p>';
         // D-1435: one setting for every carrier module; it is saved with the tab.
-        $html .= '<p><label for="taxapidhl-fresh-hours">' . esc_html__('Ask again after (hours)', 'taxapidhl') . '</label> '
+        $html .= '<p><label for="taxapidhl-fresh-hours">' . esc_html__('Minimum gap for the tracking status (DHL and GLS), hours', 'taxapidhl') . '</label> '
             . '<input type="number" min="0" max="168" step="1" style="width:6em" id="taxapidhl-fresh-hours" name="taxapidhl_fresh_hours" value="'
             . esc_attr((string) Tracker::freshHours()) . '"> <span class="description">'
-            . esc_html__('A tracking status younger than this is not asked again; delivered parcels never. Holds for DHL and GLS.', 'taxapidhl') . '</span></p>';
+            . esc_html__('A tracking status younger than this is not asked again; delivered parcels never.', 'taxapidhl') . '</span></p>';
 
         return $html . ($this->access->apiKey() === null ? '' : $this->probe()) . $this->portokasse();
     }
