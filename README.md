@@ -10,6 +10,13 @@ login, sealed) and a probe «Check Portokasse» that shows the balance and the p
 step 1 towards printing letter postage on the 62 mm label printer. It buys nothing. Deutsche Post letters with a matrix code (e.g. the Maxibrief of an eBay label) are found without a hint; DHL answers them as service `svb` with an internal id, so the result keeps the number asked for (0.0.6). The probe «Track» takes an optional service hint and recipient postcode. Tracking tested against DHL production on 2026-10-27; Internetmarke not yet tested against
 the Post. Nothing is written to the model.**
 
+**New in 0.0.22: DHL Online Frankierung («Parcel DE Private Shipping») for the shipping module
+[wp_tax_shipping](https://github.com/sfambach/wp_tax_shipping) (D-1496).** It answers the filters `taxmod_shipping_rates`
+(products of DHL's catalog that fit the parcel, with DHL's gross price; catalog cached a day), `taxmod_shipping_buy`
+(an unpaid cart; the owner pays on DHL's own page, so creating it costs nothing), `taxmod_shipping_status` (paid? shipment
+number) and `taxmod_shipping_label` (the PDF). It uses the same API key as tracking; the DHL app must be approved for
+*Parcel DE Private Shipping* in the developer portal. Not yet tested against DHL.
+
 ## Idea in short
 
 - The eBay shipping page (and later every source) knows tracking numbers but not where the parcel is.

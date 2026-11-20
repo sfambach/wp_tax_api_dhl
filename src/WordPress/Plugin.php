@@ -18,7 +18,7 @@ use Taxmod\Core\Import\Mail\ShopMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.21';
+    public const VERSION    = '0.0.22';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -69,6 +69,7 @@ final class Plugin
                 SettingsScreen::probeForms();
             }
         });
+        Shipping::register();
         add_filter(Tracker::FILTER, static fn (mixed $previous, mixed $number = '', mixed $mode = Tracker::STORED): ?array => (new Tracker())->filter($previous, $number, $mode), 10, 3);
         add_action('admin_notices', $plugin->noticeWithoutTabs(...));
         // Late: this plugin loads before the modeller, which brings the mail contract (0.2.120 or later).
