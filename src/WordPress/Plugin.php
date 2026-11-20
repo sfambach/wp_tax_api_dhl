@@ -18,7 +18,7 @@ use Taxmod\Core\Import\Mail\ShopMailParser;
  */
 final class Plugin
 {
-    public const VERSION    = '0.0.20';
+    public const VERSION    = '0.0.21';
     public const CAPABILITY = 'manage_options';
     public const TAB        = 'dhl';
     public const PROBE      = 'taxapidhl_probe';
@@ -43,6 +43,9 @@ final class Plugin
     public static function boot(): void
     {
         $plugin = new self();
+
+        // D-1500: the German texts in languages/ — WordPress finds a plugin's own folder only when asked.
+        add_action('init', static fn () => load_plugin_textdomain('taxapidhl', false, dirname(plugin_basename(dirname(__DIR__, 2) . '/wp-tax-api-dhl.php')) . '/languages'), 1);
 
         // D-1409, D-1415: this release stands on the modeller 0.2.172 (shared parser frame, HTTP block, ListPage::acting; button/money/date D-1500); an older one says so.
         add_action('admin_notices', static function (): void {
