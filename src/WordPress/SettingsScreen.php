@@ -121,7 +121,8 @@ final class SettingsScreen
         $html = '<h2>' . esc_html__('Portokasse (probe, nothing is bought)', 'taxapidhl') . '</h2>';
 
         if ((new StoredPortokasse($this->access))->access() !== null) {
-            $html .= ListPage::toolbar(['<button type="submit" form="taxapidhl-portokasse" class="button">' . esc_html__('Check Portokasse', 'taxapidhl') . '</button>']);
+            // D-1500: the Configuration page has one toolbar (Save); a section's own act stands in its section.
+            $html .= '<p>' . ListPage::button(__('Check Portokasse', 'taxapidhl'), '', false, '', '', 'taxapidhl-portokasse') . '</p>';
         }
 
         $last = get_option(Plugin::LAST_PORTOKASSE);
@@ -131,11 +132,11 @@ final class SettingsScreen
         }
 
         $html .= '<p>' . esc_html(sprintf(
-            /* translators: 1: user, 2: balance in euros, 3: date */
-            __('%1$s: balance %2$s € (read %3$s)', 'taxapidhl'),
+            /* translators: 1: user, 2: balance with its currency, 3: date */
+            __('%1$s: balance %2$s (read %3$s)', 'taxapidhl'),
             (string) ($last['user'] ?? ''),
-            number_format_i18n(((int) ($last['balance'] ?? 0)) / 100, 2),
-            (string) $last['at']
+            ListPage::money(((int) ($last['balance'] ?? 0)) / 100, 'EUR'),
+            ListPage::date((string) $last['at'], true) ?: (string) $last['at']
         )) . ((string) ($last['notice'] ?? '') === '' ? '' : ' ' . esc_html((string) $last['notice'])) . '</p>'
             . '<table class="widefat striped" style="max-width:60em"><thead><tr><th>' . esc_html__('ID', 'taxapidhl') . '</th><th>' . esc_html__('Print format', 'taxapidhl')
             . '</th><th>' . esc_html__('Type', 'taxapidhl') . '</th><th>' . esc_html__('Size (mm)', 'taxapidhl') . '</th><th>' . esc_html__('Address', 'taxapidhl') . '</th></tr></thead><tbody>';
@@ -143,7 +144,7 @@ final class SettingsScreen
         foreach (is_array($last['formats'] ?? null) ? $last['formats'] : [] as $format) {
             $format = is_array($format) ? $format : [];
             $html .= '<tr><td>' . esc_html((string) ($format['id'] ?? '')) . '</td><td>' . esc_html((string) ($format['name'] ?? '')) . '</td><td>'
-                . esc_html((string) ($format['type'] ?? '')) . '</td><td>' . esc_html(((float) ($format['width'] ?? 0)) . ' × ' . ((float) ($format['height'] ?? 0)))
+                . esc_html((string) ($format['type'] ?? '')) . '</td><td>' . esc_html(ListPage::number((float) ($format['width'] ?? 0)) . ' × ' . ListPage::number((float) ($format['height'] ?? 0)))
                 . '</td><td>' . (empty($format['address']) ? '–' : '✓') . '</td></tr>';
         }
 
@@ -157,7 +158,7 @@ final class SettingsScreen
             . '<p><input type="text" form="taxapidhl-probe" name="tracking" class="regular-text" placeholder="' . esc_attr__('Tracking number', 'taxapidhl') . '"> '
             . '<select form="taxapidhl-probe" name="service">' . self::serviceOptions() . '</select> '
             . '<input type="text" form="taxapidhl-probe" name="postal_code" style="width:8em" placeholder="' . esc_attr__('Recipient postcode', 'taxapidhl') . '"> '
-            . '<button type="submit" form="taxapidhl-probe" class="button">' . esc_html__('Track', 'taxapidhl') . '</button></p>';
+            . ListPage::button(__('Track', 'taxapidhl'), '', false, '', '', 'taxapidhl-probe') . '</p>';
 
         $last = get_option(Plugin::LAST_PROBE);
 
