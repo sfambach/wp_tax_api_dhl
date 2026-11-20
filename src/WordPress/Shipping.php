@@ -17,11 +17,13 @@ final class Shipping
     public const BUY    = 'taxmod_shipping_buy';
     public const STATUS = 'taxmod_shipping_status';
     public const LABEL  = 'taxmod_shipping_label';
+    public const CARRIERS = 'taxmod_shipping_carriers';
 
     private const CATALOG_CACHE = 'taxmod_dhl_of_catalog';
 
     public static function register(): void
     {
+        add_filter(self::CARRIERS, static fn (mixed $carriers): array => (is_array($carriers) ? $carriers : []) + [ShippingAdapter::CARRIER => 'DHL']);
         add_filter(self::RATES, static fn (mixed $rates, mixed $parcel = []): array => self::adapter() === null
             ? (is_array($rates) ? $rates : [])
             : self::adapter()->rates(is_array($rates) ? array_values($rates) : [], is_array($parcel) ? $parcel : []), 10, 2);
