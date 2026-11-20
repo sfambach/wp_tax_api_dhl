@@ -2,7 +2,9 @@
 
 namespace TaxApiDhl\WordPress;
 
+use Taxmod\Core\Description\InputKind;
 use Taxmod\WordPress\Admin\ListPage;
+use Taxmod\WordPress\Draw\SelectMarkup;
 use TaxApiDhl\Core\Api\Environment;
 
 /**
@@ -37,18 +39,13 @@ final class SettingsScreen
         }
 
         $current = $this->access->environment();
-        $options = '';
-
-        foreach ([Environment::Sandbox->value => __('Sandbox (sample data, for the connection test)', 'taxapidhl'), Environment::Production->value => __('Production (real shipments)', 'taxapidhl')] as $value => $label) {
-            $options .= '<option value="' . esc_attr($value) . '"' . selected($current->value, $value, false) . '>' . esc_html($label) . '</option>';
-        }
+        $environments = [Environment::Sandbox->value => __('Sandbox (sample data, for the connection test)', 'taxapidhl'), Environment::Production->value => __('Production (real shipments)', 'taxapidhl')];
 
         $html .= '<table class="form-table" role="presentation"><tbody>'
             . '<tr><th scope="row"><label for="taxapidhl-environment">' . esc_html__('Server', 'taxapidhl') . '</label></th>'
-            . '<td><select id="taxapidhl-environment" name="taxapidhl_environment">' . $options . '</select></td></tr>'
+            . '<td>' . SelectMarkup::of('taxapidhl_environment', $environments, $current->value, false, attributes: ['id' => 'taxapidhl-environment']) . '</td></tr>'
             . '<tr><th scope="row"><label for="taxapidhl-api-key">' . esc_html__('API key', 'taxapidhl') . '</label></th>'
-            . '<td><input type="password" class="regular-text" autocomplete="off" id="taxapidhl-api-key" name="taxapidhl_api_key" value="" placeholder="'
-            . esc_attr($this->access->hasStoredKey() ? __('stored — leave empty to keep it', 'taxapidhl') : '') . '"></td></tr>'
+            . '<td>' . ListPage::field(InputKind::Secret, 'taxapidhl_api_key', '', ['id' => 'taxapidhl-api-key', 'size' => 40, 'placeholder' => $this->access->hasStoredKey() ? __('stored — leave empty to keep it', 'taxapidhl') : '']) . '</td></tr>'
             . '</tbody></table>';
 
         $html .= $this->portokasseFields();
@@ -85,8 +82,7 @@ final class SettingsScreen
         )) . '</p>';
         // D-1435: one setting for every carrier module; it is saved with the tab.
         $html .= '<p><label for="taxapidhl-fresh-hours">' . esc_html__('Minimum gap for the tracking status (DHL and GLS), hours', 'taxapidhl') . '</label> '
-            . '<input type="number" min="0" max="168" step="1" style="width:6em" id="taxapidhl-fresh-hours" name="taxapidhl_fresh_hours" value="'
-            . esc_attr((string) Tracker::freshHours()) . '"> <span class="description">'
+            . ListPage::field(InputKind::Number, 'taxapidhl_fresh_hours', (string) Tracker::freshHours(), ['id' => 'taxapidhl-fresh-hours', 'min' => 0, 'max' => 168, 'step' => 1]) . ' <span class="description">'
             . esc_html__('A tracking status younger than this is not asked again; delivered parcels never.', 'taxapidhl') . '</span></p>';
 
         return $html . ($this->access->apiKey() === null ? '' : $this->probe()) . $this->portokasse();
@@ -111,8 +107,7 @@ final class SettingsScreen
     private static function inputRow(string $name, string $label, string $type, string $value, string $placeholder): string
     {
         return '<tr><th scope="row"><label for="taxapidhl-' . esc_attr($name) . '">' . esc_html($label) . '</label></th>'
-            . '<td><input type="' . esc_attr($type) . '" class="regular-text" autocomplete="off" id="taxapidhl-' . esc_attr($name)
-            . '" name="taxapidhl_' . esc_attr($name) . '" value="' . esc_attr($value) . '" placeholder="' . esc_attr($placeholder) . '"></td></tr>';
+            . '<td>' . ListPage::field($type === 'password' ? InputKind::Secret : InputKind::Line, 'taxapidhl_' . $name, $value, ['id' => 'taxapidhl-' . $name, 'size' => 40, 'placeholder' => $placeholder]) . '</td></tr>';
     }
 
     /** The Portokasse probe: balance and print formats, label printers first. Buys nothing. */
@@ -155,9 +150,9 @@ final class SettingsScreen
     private function probe(): string
     {
         $html = '<h2>' . esc_html__('Track a shipment (probe, nothing is written)', 'taxapidhl') . '</h2>'
-            . '<p><input type="text" form="taxapidhl-probe" name="tracking" class="regular-text" placeholder="' . esc_attr__('Tracking number', 'taxapidhl') . '"> '
-            . '<select form="taxapidhl-probe" name="service">' . self::serviceOptions() . '</select> '
-            . '<input type="text" form="taxapidhl-probe" name="postal_code" style="width:8em" placeholder="' . esc_attr__('Recipient postcode', 'taxapidhl') . '"> '
+            . '<p>' . ListPage::field(InputKind::Line, 'tracking', '', ['form' => 'taxapidhl-probe', 'size' => 30, 'placeholder' => __('Tracking number', 'taxapidhl')]) . ' '
+            . SelectMarkup::of('service', array_combine(\TaxApiDhl\Core\Api\TrackingClient::SERVICES, \TaxApiDhl\Core\Api\TrackingClient::SERVICES), null, true, 'taxapidhl-probe', nothingWord: __('Service: automatic', 'taxapidhl')) . ' '
+            . ListPage::field(InputKind::Line, 'postal_code', '', ['form' => 'taxapidhl-probe', 'size' => 8, 'placeholder' => __('Recipient postcode', 'taxapidhl')]) . ' '
             . ListPage::button(__('Track', 'taxapidhl'), '', false, '', '', 'taxapidhl-probe') . '</p>';
 
         $last = get_option(Plugin::LAST_PROBE);
@@ -185,17 +180,6 @@ final class SettingsScreen
         }
 
         return $html . '</tbody></table>';
-    }
-
-    private static function serviceOptions(): string
-    {
-        $html = '<option value="">' . esc_html__('Service: automatic', 'taxapidhl') . '</option>';
-
-        foreach (\TaxApiDhl\Core\Api\TrackingClient::SERVICES as $service) {
-            $html .= '<option value="' . esc_attr($service) . '">' . esc_html($service) . '</option>';
-        }
-
-        return $html;
     }
 
     /** The probes' own forms, printed after the modeller's page so they do not nest in the tab's form. */
